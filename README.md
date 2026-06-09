@@ -116,68 +116,6 @@ Silnik uruchamia się automatycznie i zaczyna scrapować. Możesz go zatrzymać 
 docker compose down          # zatrzymuje kontenery, zachowuje dane
 docker compose down -v       # zatrzymuje i usuwa wolumeny (czyści bazę)
 ```
-
----
-
-## Konfiguracja (`.env`)
-
-```env
-# MongoDB
-MONGO_URI=mongodb://mongodb:27017
-MONGO_DB=kingdom_scraper
-
-# Redis
-REDIS_HOST=redis
-REDIS_PORT=6379
-
-# Silnik
-WORKER_COUNT=4              # liczba procesów (domyślnie: cpu_count)
-COROUTINES_PER_WORKER=8     # liczba coroutines na proces
-REQUEST_DELAY=1.0           # opóźnienie między requestami [s]
-TARGET_URL=https://www.kingdomelblag.pl
-
-# Flask
-FLASK_PORT=5000
-FLASK_DEBUG=false
-SECRET_KEY=change_me
-```
-
----
-
-## Schemat danych
-
-### Kolekcja `offers`
-
-```json
-{
-  "offer_id": "986-2-2",
-  "title": "Na wynajem nowe 2-pokojowe mieszkanie na parterze",
-  "category": "mieszkanie",
-  "transaction": "wynajem",
-  "price": 1800.0,
-  "area_m2": 35.66,
-  "rooms": 2,
-  "address": {
-    "street": "Gwiezdna",
-    "city": "Elbląg",
-    "region": "warmińsko-mazurskie"
-  },
-  "url": "https://www.kingdomelblag.pl/oferta/986-2-2/...",
-  "scraped_at": "2026-06-09T19:27:46Z"
-}
-```
-
-### Kolekcja `contacts`
-
-```json
-{
-  "name": "Kingdom Nieruchomości",
-  "email": "biuro@kingdomelblag.pl",
-  "phone": "665 850 098",
-  "address": "Kingdom Nieruchomości"
-}
-```
-
 ---
 
 ## Struktura projektu
@@ -223,12 +161,6 @@ kingdom-scraper/
 | **multiprocessing + asyncio** | Procesy omijają GIL Pythona; coroutines dają wysoką współbieżność I/O bez wątków |
 | **MongoDB** | Schemat-free — różne typy nieruchomości mogą mieć różne pola |
 | **run_in_executor dla BLPOP** | Blokujące Redis I/O nie blokuje event loop asyncio |
-
----
-
-## Autorzy
-
-- Kacper — projekt indywidualny
 
 ---
 
