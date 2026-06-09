@@ -39,7 +39,7 @@ services:
         condition: service_healthy
     networks:
       - scraper-net
-    restart: on-failure
+    restart: unless-stopped
 
   interface:
     build:
