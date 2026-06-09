@@ -5,6 +5,8 @@ import logging
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
 
 from shared.constants import (
+    COLLECTION_CONTACTS,
+    COLLECTION_OFFERS,
     KEY_ENGINE_STATUS,
     KEY_QUEUE,
     KEY_STAT_ERRORS,
@@ -58,6 +60,16 @@ def engine_reset():
     r.delete(KEY_QUEUE, KEY_VISITED, KEY_STAT_SCRAPED, KEY_STAT_ERRORS)
     r.set(KEY_ENGINE_STATUS, STATUS_STOPPED)
     logger.info("Engine state reset")
+    return redirect(url_for("control.control"))
+
+
+@control_bp.route("/database/clear", methods=["POST"])
+def database_clear():
+    """Drop all documents from offers and contacts collections."""
+    db = current_app.config["mongo_db"]
+    offers_deleted = db[COLLECTION_OFFERS].delete_many({}).deleted_count
+    contacts_deleted = db[COLLECTION_CONTACTS].delete_many({}).deleted_count
+    logger.info("Database cleared — offers: %d, contacts: %d", offers_deleted, contacts_deleted)
     return redirect(url_for("control.control"))
 
 
