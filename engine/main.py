@@ -7,7 +7,7 @@ import signal
 import sys
 
 from shared.constants import SEED_URLS, STATUS_STOPPED, TARGET_URL, WORKER_COUNT
-from engine.queue_manager import QueueError, QueueManager
+from queue_manager import QueueError, QueueManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,7 +44,7 @@ def _seed_queue(queue: QueueManager) -> None:
 
 
 def _spawn_workers(n: int) -> None:
-    from engine.worker import run_worker
+    from worker import run_worker
 
     for i in range(n):
         proc = multiprocessing.Process(
@@ -77,6 +77,11 @@ def main() -> None:
     logger.info("All %d worker(s) running — waiting for completion", n)
     for proc in _processes:
         proc.join()
+
+    try:
+        QueueManager().set_engine_status(STATUS_STOPPED)
+    except QueueError:
+        pass
 
     logger.info("Engine finished")
 

@@ -11,12 +11,14 @@ TARGET_URL: str = os.getenv("TARGET_URL", "https://www.kingdomelblag.pl")
 
 # Seed URLs cover all main listing categories
 SEED_URLS: list[str] = [
-    f"{TARGET_URL}/mieszkania-na-sprzedaz",
-    f"{TARGET_URL}/domy-na-sprzedaz",
-    f"{TARGET_URL}/dzialki-na-sprzedaz",
-    f"{TARGET_URL}/lokale-na-sprzedaz",
-    f"{TARGET_URL}/mieszkania-na-wynajem",
-    f"{TARGET_URL}/domy-na-wynajem",
+    f"{TARGET_URL}/oferty/mieszkania-sprzedaz",
+    f"{TARGET_URL}/oferty/domy-sprzedaz",
+    f"{TARGET_URL}/oferty/dzialki-sprzedaz",
+    f"{TARGET_URL}/oferty/lokale-sprzedaz",
+    f"{TARGET_URL}/oferty/mieszkania-wynajem",
+    f"{TARGET_URL}/oferty/domy-wynajem",
+    f"{TARGET_URL}/oferty/lokale-wynajem",
+    f"{TARGET_URL}/oferty/dzialki-dzierzawa",
     f"{TARGET_URL}/kontakt",
 ]
 
@@ -49,4 +51,4 @@ REQUEST_DELAY: float = float(os.getenv("REQUEST_DELAY", "1.0"))
 USER_AGENT: str = (
     "Mozilla/5.0 (compatible; KingdomScraper/1.0; +https://github.com/Kacper7011/kingdom-scraper)"
 )
-REQUEST_TIMEOUT: int = 15
+REQUEST_TIMEOUT: int = 30
