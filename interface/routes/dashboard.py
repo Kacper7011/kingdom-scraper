@@ -19,13 +19,35 @@ dashboard_bp = Blueprint("dashboard", __name__)
 
 PAGE_SIZE = 12
 
+CATEGORIES = ["mieszkanie", "dom", "dzialka", "lokal", "inne"]
+TRANSACTIONS = ["sprzedaz", "wynajem", "dzierzawa"]
 
-def _get_offers(page: int) -> tuple[list[dict], int]:
+
+def _build_filter(args) -> dict:
+    q = {}
+    if args.get("category"):
+        q["category"] = args["category"]
+    if args.get("transaction"):
+        q["transaction"] = args["transaction"]
+    if args.get("city"):
+        q["address.city"] = {"$regex": args["city"].strip(), "$options": "i"}
+    price_min = args.get("price_min", type=float)
+    price_max = args.get("price_max", type=float)
+    if price_min is not None or price_max is not None:
+        q["price"] = {}
+        if price_min is not None:
+            q["price"]["$gte"] = price_min
+        if price_max is not None:
+            q["price"]["$lte"] = price_max
+    return q
+
+
+def _get_offers(page: int, filters: dict) -> tuple[list[dict], int]:
     col = current_app.config["mongo_db"][COLLECTION_OFFERS]
     skip = (page - 1) * PAGE_SIZE
-    total = col.count_documents({})
+    total = col.count_documents(filters)
     offers = list(
-        col.find({}, {"_id": 0})
+        col.find(filters, {"_id": 0})
         .sort("scraped_at", -1)
         .skip(skip)
         .limit(PAGE_SIZE)
@@ -51,7 +73,8 @@ def _get_redis_stats() -> dict:
 @dashboard_bp.route("/")
 def index():
     page = max(1, request.args.get("page", 1, type=int))
-    offers, total = _get_offers(page)
+    filters = _build_filter(request.args)
+    offers, total = _get_offers(page, filters)
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     stats = _get_redis_stats()
     return render_template(
@@ -61,6 +84,9 @@ def index():
         total_pages=total_pages,
         total=total,
         stats=stats,
+        filters=request.args,
+        categories=CATEGORIES,
+        transactions=TRANSACTIONS,
     )
 
 
