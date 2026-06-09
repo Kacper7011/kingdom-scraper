@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ offer.title }} — Kingdom Scraper{% endblock %}
+{% block content %}
+
+<a href="/" class="btn btn-outline-secondary btn-sm mb-3">&#8592; Powrót</a>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex gap-2 mb-3">
+            <span class="badge badge-{{ offer.category }} rounded-pill">{{ offer.category }}</span>
+            <span class="badge bg-secondary rounded-pill">{{ offer.transaction }}</span>
+        </div>
+
+        <h4 class="card-title">{{ offer.title }}</h4>
+
+        <table class="table table-bordered mt-3">
+            <tbody>
+                <tr><th>ID oferty</th><td>{{ offer.offer_id }}</td></tr>
+                <tr><th>Miasto</th><td>{{ offer.address.city if offer.address }}</td></tr>
+                <tr><th>Ulica</th><td>{{ offer.address.street or '—' if offer.address }}</td></tr>
+                <tr><th>Region</th><td>{{ offer.address.region or '—' if offer.address }}</td></tr>
+                <tr><th>Cena</th><td>
+                    {% if offer.price %}{{ "{:,.0f}".format(offer.price) }} PLN{% else %}—{% endif %}
+                </td></tr>
+                <tr><th>Powierzchnia</th><td>
+                    {% if offer.area_m2 %}{{ offer.area_m2 }} m²{% else %}—{% endif %}
+                </td></tr>
+                <tr><th>Liczba pokoi</th><td>{{ offer.rooms or '—' }}</td></tr>
+                <tr><th>Pobrano</th><td>{{ offer.scraped_at }}</td></tr>
+                <tr><th>Źródło</th><td>
+                    <a href="{{ offer.url }}" target="_blank" rel="noopener">{{ offer.url }}</a>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
