@@ -48,6 +48,22 @@
             </div>
         </div>
 
+        <div class="card shadow-sm mb-4 border-danger">
+            <div class="card-header fw-bold text-danger">Strefa niebezpieczna</div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Poniższa operacja trwale usuwa wszystkie oferty i kontakty z MongoDB.
+                    Kolejka Redis pozostaje niezmieniona.
+                </p>
+                <form method="post" action="/database/clear"
+                      onsubmit="return confirm('UWAGA: Spowoduje to trwałe usunięcie wszystkich ofert i kontaktów z bazy danych. Czy na pewno chcesz kontynuować?')">
+                    <button class="btn btn-outline-danger">
+                        &#128465; Wyczyść bazę danych
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <div class="card shadow-sm">
             <div class="card-header fw-bold">Live stats
                 <a href="/engine/status" target="_blank" class="float-end small text-muted">JSON &#8599;</a>
