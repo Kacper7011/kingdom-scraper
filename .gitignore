@@ -1,0 +1,140 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env.local
+.env.*.local
+
+# pytest
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+nosetests.xml
+
+# mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# ========================
+# Środowisko / Konfiguracja
+# ========================
+.env
+!.env.example
+
+# ========================
+# Docker
+# ========================
+# Nie ignorujemy docker-compose.yml ani Dockerfile — są częścią projektu
+# Ignorujemy tylko lokalne overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ========================
+# MongoDB (lokalne dane)
+# ========================
+data/
+mongo-data/
+mongodb-data/
+
+# ========================
+# Redis (lokalne dane)
+# ========================
+redis-data/
+dump.rdb
+appendonly.aof
+
+# ========================
+# Logi
+# ========================
+logs/
+*.log
+*.log.*
+
+# ========================
+# IDE / Edytory
+# ========================
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ========================
+# Jupyter (na wszelki wypadek)
+# ========================
+.ipynb_checkpoints/
+*.ipynb
+
+# ========================
+# Pliki tymczasowe / scraper
+# ========================
+scraped/
+output/
+exports/
+*.csv
+*.json.bak
+tmp/
+temp/

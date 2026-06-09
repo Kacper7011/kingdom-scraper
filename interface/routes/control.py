@@ -87,14 +87,40 @@ def database_clear():
 def engine_status():
     r = _redis()
     try:
+        scraped = int(r.get(KEY_STAT_SCRAPED) or 0)
+        errors = int(r.get(KEY_STAT_ERRORS) or 0)
+        visited = r.scard(KEY_VISITED)
+        queue_len = r.llen(KEY_QUEUE)
+        progress_pct = round(scraped / (scraped + queue_len) * 100) if (scraped + queue_len) > 0 else 0
         data = {
             "status": r.get(KEY_ENGINE_STATUS) or STATUS_STOPPED,
-            "scraped": int(r.get(KEY_STAT_SCRAPED) or 0),
-            "errors": int(r.get(KEY_STAT_ERRORS) or 0),
-            "queue_length": r.llen(KEY_QUEUE),
-            "visited_count": r.scard(KEY_VISITED),
+            "scraped": scraped,
+            "errors": errors,
+            "queue_length": queue_len,
+            "visited_count": visited,
+            "progress_pct": progress_pct,
         }
         return jsonify(data)
     except Exception as exc:
         logger.error("Status endpoint error: %s", exc)
         return jsonify({"status": "error", "detail": str(exc)}), 500
+
+
+@control_bp.route("/engine/activity")
+def engine_activity():
+    """Return the 15 most recently scraped offers for the live feed."""
+    try:
+        col = current_app.config["mongo_db"][COLLECTION_OFFERS]
+        docs = list(
+            col.find({}, {"_id": 0, "offer_id": 1, "title": 1, "category": 1,
+                          "transaction": 1, "price": 1, "address": 1, "scraped_at": 1})
+               .sort("scraped_at", -1)
+               .limit(15)
+        )
+        for d in docs:
+            if "scraped_at" in d and hasattr(d["scraped_at"], "isoformat"):
+                d["scraped_at"] = d["scraped_at"].strftime("%H:%M:%S")
+        return jsonify(docs)
+    except Exception as exc:
+        logger.error("Activity endpoint error: %s", exc)
+        return jsonify([]), 500
