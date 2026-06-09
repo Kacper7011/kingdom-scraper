@@ -1,131 +1,125 @@
-# 🏠 kingdom-scraper
+# kingdom-scraper
 
 Rozproszony scraper nieruchomości oparty na danych z [kingdomelblag.pl](https://www.kingdomelblag.pl/).  
 Projekt akademicki realizujący wieloprocesowe pobieranie, przetwarzanie i składowanie danych z biura nieruchomości Kingdom Elbląg.
 
 ---
 
-## 📋 Opis projektu
+## Opis projektu
 
 Aplikacja pobiera, selekcjonuje i składuje dane o ofertach nieruchomości w 4 grupach tematycznych:
 
 | Grupa | Przykładowe dane |
 |---|---|
-| 📍 **Adresy nieruchomości** | ulica, miasto, województwo |
-| 💰 **Dane oferty** | cena, powierzchnia (m²), liczba pokoi, typ transakcji |
-| 🏷️ **Klasyfikacja** | kategoria (mieszkanie/dom/działka/lokal), rynek (PL/BG/ES) |
-| 📞 **Dane kontaktowe biura** | email, telefon, adres biura |
+| **Adresy nieruchomości** | ulica, miasto, województwo |
+| **Dane oferty** | cena, powierzchnia (m²), liczba pokoi, typ transakcji |
+| **Klasyfikacja** | kategoria (mieszkanie / dom / działka / lokal), transakcja (sprzedaż / wynajem / dzierżawa) |
+| **Dane kontaktowe biura** | email, telefon, adres biura |
 
 ---
 
-## 🏗️ Architektura
+## Architektura
 
-Aplikacja podzielona jest na **3 moduły**, każdy w osobnym kontenerze Docker:
+Aplikacja podzielona jest na **4 kontenery Docker** komunikujące się przez wewnętrzną sieć `scraper-net`:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Docker Compose                       │
 │                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │   INTERFEJS  │    │    SILNIK    │    │      BD      │  │
-│  │  (Flask UI)  │◄──►│  (Scraper)  │◄──►│  (MongoDB)   │  │
-│  │  :5000       │    │  workers    │    │  :27017      │  │
+│  │   interface  │    │    engine    │    │   mongodb    │  │
+│  │  Flask :5000 │◄──►│  workers    │◄──►│   :27017     │  │
 │  └──────────────┘    └──────────────┘    └──────────────┘  │
 │                             │                               │
 │                      ┌──────────────┐                       │
-│                      │    REDIS     │                       │
-│                      │  (kolejka)   │                       │
-│                      │  :6379       │                       │
+│                      │    redis     │                       │
+│                      │    :6379     │                       │
 │                      └──────────────┘                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Moduły
+### Moduł: interface
 
-#### 1. Interfejs (`/interface`)
-- **Flask** – panel zarządzania scrapingiem
-- Podgląd zebranych danych w czasie rzeczywistym
-- Uruchamianie/zatrzymywanie silnika
-- Statystyki i eksport danych
+- **Flask + Jinja2** — panel zarządzania dostępny pod `http://localhost:5000`
+- Dashboard z kartami ofert (paginacja, filtrowanie po kategorii)
+- Panel sterowania: start / stop silnika, reset kolejki, live stats (polling co 3 s)
+- Endpoint JSON `GET /engine/status` — aktualny status + liczniki Redis
 
-#### 2. Silnik (`/engine`)
-- **multiprocessing** – skalowanie na rdzenie CPU
-- **asyncio** – asynchroniczne requesty HTTP
-- **BeautifulSoup4** – parsowanie HTML
-- **Redis** – kolejka URL-i do przetworzenia
-- Worker Pool: `cpu_count()` procesów × N coroutines
+### Moduł: engine
 
-#### 3. Baza danych (`/database`)
-- **MongoDB** – składowanie dokumentów JSON
-- Kolekcje: `offers`, `contacts`, `locations`, `meta`
+- **multiprocessing** — `WORKER_COUNT` (domyślnie: `os.cpu_count()`) niezależnych procesów
+- **asyncio** — każdy proces uruchamia `COROUTINES_PER_WORKER` współbieżnych coroutines
+- **aiohttp** — asynchroniczne requesty HTTP z `User-Agent` i `REQUEST_DELAY`
+- **BeautifulSoup4 + lxml** — parsowanie HTML ofert i stron listingowych
+- **Redis** — kolejka BLPOP/RPUSH z deduplicacją przez `SISMEMBER`
 
----
+### Moduł: database (MongoDB)
 
-## 🔧 Technologie
+- **MongoDB 7.0** — składowanie dokumentów JSON
+- Skrypt `init.js` tworzy kolekcje i indeksy przy pierwszym uruchomieniu
+- Kolekcje: `offers` (indeks unikalny na `offer_id`), `contacts` (indeks na `email`)
 
-| Warstwa | Technologia |
-|---|---|
-| Scraping | `requests`, `aiohttp`, `BeautifulSoup4` |
-| Równoległość | `multiprocessing`, `asyncio` |
-| Kolejkowanie | `Redis` |
-| Baza danych | `MongoDB` + `pymongo` |
-| Interfejs | `Flask`, `Jinja2` |
-| Konteneryzacja | `Docker`, `Docker Compose` |
+### Shared
+
+- `shared/models.py` — dataclassy `Offer`, `Address`, `Contact` z `to_dict()` / `from_dict()`
+- `shared/constants.py` — wszystkie stałe i zmienne środowiskowe; jedyne źródło konfiguracji
 
 ---
 
-## 🚀 Uruchomienie
+## Przepływ danych
+
+```
+1. engine/main.py  →  RPUSH seed URLs do Redis (9 kategorii)
+2. main.py         →  spawn N procesów Worker-0 … Worker-N
+3. Każdy Worker    →  asyncio.gather(M coroutines)
+4. Każda coroutine:
+   a. BLPOP queue:urls        (non-blocking via run_in_executor)
+   b. SISMEMBER set:visited   (deduplicacja)
+   c. aiohttp.get(url)        (async fetch z timeoutem 30 s)
+   d. BeautifulSoup.parse()   (wyciągnij dane)
+   e. pymongo.update_one()    (upsert do MongoDB)
+   f. SADD set:visited url    (oznacz jako odwiedzony)
+   g. RPUSH queue:urls [nowe] (linki z tej strony + paginacja)
+   h. INCR stats:scraped      (licznik)
+5. Flask UI  →  odczyt MongoDB + Redis stats → wyświetlenie
+```
+
+---
+
+## Szybki start
 
 ### Wymagania
+
 - Docker >= 24.0
 - Docker Compose >= 2.0
 
-### Szybki start
+### Uruchomienie
 
 ```bash
-git clone https://github.com/<username>/kingdom-scraper.git
+git clone https://github.com/Kacper7011/kingdom-scraper.git
 cd kingdom-scraper
-cp .env.example .env
+cp .env.example .env        # dostosuj wartości jeśli potrzeba
 docker compose up --build
 ```
 
-Interfejs dostępny pod: `http://localhost:5000`
+Po ~15 sekundach (czas healthchecków MongoDB i Redis) aplikacja jest gotowa:
 
----
+- Dashboard ofert: `http://localhost:5000`
+- Panel sterowania: `http://localhost:5000/control`
+- Status JSON: `http://localhost:5000/engine/status`
 
-## 📁 Struktura projektu
+Silnik uruchamia się automatycznie i zaczyna scrapować. Możesz go zatrzymać lub zrestartować przez panel sterowania.
 
-```
-kingdom-scraper/
-│
-├── interface/              # Moduł UI (Flask)
-│   ├── app.py
-│   ├── templates/
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── engine/                 # Moduł silnika (scraper)
-│   ├── main.py
-│   ├── crawler.py          # asyncio crawling
-│   ├── parser.py           # BeautifulSoup parsers
-│   ├── worker.py           # multiprocessing workers
-│   ├── queue_manager.py    # Redis queue
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── database/               # Moduł bazy danych
-│   ├── init/
-│   │   └── init.js         # inicjalizacja kolekcji i indeksów
-│   └── Dockerfile
-│
-├── docker-compose.yml
-├── .env.example
-└── README.md
+### Zatrzymanie
+
+```bash
+docker compose down          # zatrzymuje kontenery, zachowuje dane
+docker compose down -v       # zatrzymuje i usuwa wolumeny (czyści bazę)
 ```
 
 ---
 
-## ⚙️ Konfiguracja (`.env`)
+## Konfiguracja (`.env`)
 
 ```env
 # MongoDB
@@ -137,40 +131,39 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 
 # Silnik
-WORKER_COUNT=4          # liczba procesów (domyślnie: cpu_count)
-COROUTINES_PER_WORKER=8 # liczba coroutines na proces
-REQUEST_DELAY=1.0       # opóźnienie między requestami (sekundy)
+WORKER_COUNT=4              # liczba procesów (domyślnie: cpu_count)
+COROUTINES_PER_WORKER=8     # liczba coroutines na proces
+REQUEST_DELAY=1.0           # opóźnienie między requestami [s]
 TARGET_URL=https://www.kingdomelblag.pl
 
 # Flask
 FLASK_PORT=5000
 FLASK_DEBUG=false
+SECRET_KEY=change_me
 ```
 
 ---
 
-## 🗄️ Schemat danych (MongoDB)
+## Schemat danych
 
 ### Kolekcja `offers`
 
 ```json
 {
-  "_id": "ObjectId",
   "offer_id": "986-2-2",
   "title": "Na wynajem nowe 2-pokojowe mieszkanie na parterze",
   "category": "mieszkanie",
   "transaction": "wynajem",
-  "price": 1800,
+  "price": 1800.0,
   "area_m2": 35.66,
   "rooms": 2,
-  "floor": 0,
   "address": {
-    "street": "ul. Gwiezdna",
+    "street": "Gwiezdna",
     "city": "Elbląg",
     "region": "warmińsko-mazurskie"
   },
   "url": "https://www.kingdomelblag.pl/oferta/986-2-2/...",
-  "scraped_at": "2025-01-01T12:00:00Z"
+  "scraped_at": "2026-06-09T19:27:46Z"
 }
 ```
 
@@ -181,50 +174,64 @@ FLASK_DEBUG=false
   "name": "Kingdom Nieruchomości",
   "email": "biuro@kingdomelblag.pl",
   "phone": "665 850 098",
-  "address": "ul. Ogólna 63A, 82-300 Elbląg"
+  "address": "Kingdom Nieruchomości"
 }
 ```
 
 ---
 
-## 📊 Diagram przepływu danych
+## Struktura projektu
 
 ```
-kingdomelblag.pl
-      │
-      ▼
-  [Seed URLs]
-      │
-      ▼
-  Redis Queue  ◄────────────────────────┐
-      │                                 │
-      ▼                                 │
-  Worker #1 (process)              nowe URL-e
-  Worker #2 (process)    ──────────────►│
-  Worker #N (process)
-      │
-      ▼ (asyncio coroutines)
-  aiohttp fetch
-      │
-      ▼
-  BeautifulSoup parse
-      │
-      ▼
-  MongoDB save
-      │
-      ▼
-  Flask UI (podgląd)
+kingdom-scraper/
+├── interface/
+│   ├── app.py                  # Flask app factory
+│   ├── routes/
+│   │   ├── dashboard.py        # GET / i /offers/<id>
+│   │   └── control.py          # start/stop/reset/status
+│   ├── templates/              # Jinja2 + Bootstrap 5
+│   ├── Dockerfile
+│   └── requirements.txt
+├── engine/
+│   ├── main.py                 # multiprocessing entry point
+│   ├── worker.py               # asyncio event loop + coroutine pool
+│   ├── crawler.py              # aiohttp fetch + link extraction
+│   ├── parser.py               # BeautifulSoup parsers
+│   ├── queue_manager.py        # Redis queue + stats
+│   ├── db_writer.py            # MongoDB upsert + reads
+│   ├── Dockerfile
+│   └── requirements.txt
+├── database/
+│   ├── init/init.js            # indeksy i kolekcje MongoDB
+│   └── Dockerfile
+├── shared/
+│   ├── models.py               # dataclasses: Offer, Address, Contact
+│   └── constants.py            # stałe i zmienne środowiskowe
+├── docker-compose.yml
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## 👥 Autorzy
+## Uzasadnienie wyboru architektury
 
-- Imię Nazwisko – nr indeksu
+| Decyzja | Uzasadnienie |
+|---|---|
+| **Osobny kontener engine** | Silnik można skalować niezależnie od UI (dodatkowe repliki) |
+| **Redis jako kolejka** | Atomowy BLPOP zapewnia że każdy URL przetwarzany jest przez dokładnie jeden worker |
+| **multiprocessing + asyncio** | Procesy omijają GIL Pythona; coroutines dają wysoką współbieżność I/O bez wątków |
+| **MongoDB** | Schemat-free — różne typy nieruchomości mogą mieć różne pola |
+| **run_in_executor dla BLPOP** | Blokujące Redis I/O nie blokuje event loop asyncio |
 
 ---
 
-## 📄 Licencja
+## Autorzy
 
-Projekt akademicki. Dane scrapowane wyłącznie w celach edukacyjnych.  
-`robots.txt` serwisu: `Disallow:` (brak ograniczeń).
+- Kacper — projekt indywidualny
+
+---
+
+## Licencja
+
+Projekt akademicki. Dane scrapowane wyłącznie w celach edukacyjnych.
