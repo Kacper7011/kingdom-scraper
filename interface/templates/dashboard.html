@@ -101,6 +101,14 @@
     {% for offer in offers %}
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 shadow-sm">
+            {% if offer.images %}
+            <a href="/offers/{{ offer.offer_id }}">
+                <img src="{{ offer.images[0] }}"
+                     class="card-img-top"
+                     style="height: 180px; object-fit: cover;"
+                     alt="{{ offer.title }}">
+            </a>
+            {% endif %}
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
                     <span class="badge badge-{{ offer.category }} rounded-pill">{{ offer.category }}</span>

@@ -37,6 +37,7 @@ class Offer:
     price: float | None = None
     area_m2: float | None = None
     rooms: int | None = None
+    images: list[str] = field(default_factory=list)
     scraped_at: datetime = field(default_factory=datetime.utcnow)
 
     def to_dict(self) -> dict:
@@ -50,6 +51,7 @@ class Offer:
             "price": self.price,
             "area_m2": self.area_m2,
             "rooms": self.rooms,
+            "images": self.images,
             "scraped_at": self.scraped_at,
         }
 
@@ -65,6 +67,7 @@ class Offer:
             price=data.get("price"),
             area_m2=data.get("area_m2"),
             rooms=data.get("rooms"),
+            images=data.get("images", []),
             scraped_at=data.get("scraped_at", datetime.utcnow()),
         )
 
