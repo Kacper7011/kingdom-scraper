@@ -1,5 +1,86 @@
 {% extends "base.html" %}
-{% block title %}Control — Kingdom Scraper{% endblock %}
+{% block title %}Panel sterowania — Kingdom Scraper{% endblock %}
 {% block content %}
-<!-- TODO: implement control template -->
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold">Status silnika</div>
+            <div class="card-body">
+                <p class="fs-4 status-{{ status }}">
+                    {% if status == 'running' %}
+                        &#9654; Silnik działa
+                    {% else %}
+                        &#9646; Silnik zatrzymany
+                    {% endif %}
+                </p>
+                <p class="text-muted small">
+                    Status jest odczytywany z Redis (<code>engine:status</code>).
+                    Workery reagują na zmianę w ciągu kilku sekund.
+                </p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold">Sterowanie</div>
+            <div class="card-body d-flex gap-3 flex-wrap">
+
+                <form method="post" action="/engine/start">
+                    <button class="btn btn-success" {% if status == 'running' %}disabled{% endif %}>
+                        &#9654; Uruchom silnik
+                    </button>
+                </form>
+
+                <form method="post" action="/engine/stop">
+                    <button class="btn btn-danger" {% if status == 'stopped' %}disabled{% endif %}>
+                        &#9646; Zatrzymaj silnik
+                    </button>
+                </form>
+
+                <form method="post" action="/engine/reset"
+                      onsubmit="return confirm('Wyczyścić całą kolejkę i statystyki?')">
+                    <button class="btn btn-warning">
+                        &#8635; Reset kolejki
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header fw-bold">Live stats
+                <a href="/engine/status" target="_blank" class="float-end small text-muted">JSON &#8599;</a>
+            </div>
+            <div class="card-body" id="live-stats">
+                <p class="text-muted">Ładowanie...</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function refreshStats() {
+    fetch('/engine/status')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('live-stats').innerHTML =
+                '<ul class="list-unstyled mb-0">' +
+                '<li><strong>Status:</strong> ' + d.status + '</li>' +
+                '<li><strong>Pobrane oferty:</strong> ' + d.scraped + '</li>' +
+                '<li><strong>Błędy:</strong> ' + d.errors + '</li>' +
+                '<li><strong>Długość kolejki:</strong> ' + d.queue_length + '</li>' +
+                '<li><strong>Odwiedzone URL-e:</strong> ' + d.visited_count + '</li>' +
+                '</ul>';
+        })
+        .catch(() => {
+            document.getElementById('live-stats').innerHTML =
+                '<p class="text-danger">Brak połączenia z Redis</p>';
+        });
+}
+refreshStats();
+setInterval(refreshStats, 3000);
+</script>
+
 {% endblock %}

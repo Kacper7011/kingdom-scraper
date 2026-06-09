@@ -1,5 +1,95 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — Kingdom Scraper{% endblock %}
 {% block content %}
-<!-- TODO: implement dashboard template -->
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100 p-3">
+            <div class="text-muted small">Oferty w bazie</div>
+            <div class="fs-3 fw-bold">{{ total }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100 p-3">
+            <div class="text-muted small">Pobrane</div>
+            <div class="fs-3 fw-bold">{{ stats.scraped }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100 p-3">
+            <div class="text-muted small">Błędy</div>
+            <div class="fs-3 fw-bold text-danger">{{ stats.errors }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100 p-3">
+            <div class="text-muted small">Status silnika</div>
+            <div class="fs-5 status-{{ stats.status }}">
+                {% if stats.status == 'running' %}&#9654; Działa{% else %}&#9646; Zatrzymany{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if offers %}
+<div class="row g-3">
+    {% for offer in offers %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="badge badge-{{ offer.category }} rounded-pill">{{ offer.category }}</span>
+                    <span class="badge bg-secondary rounded-pill">{{ offer.transaction }}</span>
+                </div>
+                <h6 class="card-title">
+                    <a href="/offers/{{ offer.offer_id }}" class="text-decoration-none text-dark">
+                        {{ offer.title or '(brak tytułu)' }}
+                    </a>
+                </h6>
+                <p class="card-text text-muted small mb-1">
+                    &#128205;
+                    {% if offer.address %}
+                        {{ offer.address.city }}{% if offer.address.street %}, {{ offer.address.street }}{% endif %}
+                    {% endif %}
+                </p>
+                <div class="d-flex gap-3 mt-2">
+                    {% if offer.price %}
+                    <span class="fw-bold text-primary">{{ "{:,.0f}".format(offer.price) }} PLN</span>
+                    {% endif %}
+                    {% if offer.area_m2 %}
+                    <span class="text-muted">{{ offer.area_m2 }} m²</span>
+                    {% endif %}
+                    {% if offer.rooms %}
+                    <span class="text-muted">{{ offer.rooms }} pok.</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="/?page={{ page - 1 }}">&#8592;</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="/?page={{ p }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+            <a class="page-link" href="/?page={{ page + 1 }}">&#8594;</a>
+        </li>
+    </ul>
+</nav>
+
+{% else %}
+<div class="alert alert-info">
+    Brak ofert w bazie. Przejdź do
+    <a href="/control">panelu sterowania</a> i uruchom silnik.
+</div>
+{% endif %}
+
 {% endblock %}
