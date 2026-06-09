@@ -2,8 +2,6 @@ services:
   mongodb:
     build: ./database
     container_name: kingdom-mongodb
-    ports:
-      - "27017:27017"
     volumes:
       - mongo-data:/data/db
     networks:
@@ -13,24 +11,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   redis:
     image: redis:7.4-alpine
     container_name: kingdom-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
       - scraper-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
 
   engine:
-    build: ./engine
+    build:
+      context: .
+      dockerfile: engine/Dockerfile
     container_name: kingdom-engine
     env_file: .env
     depends_on:
@@ -40,11 +39,12 @@ services:
         condition: service_healthy
     networks:
       - scraper-net
-    volumes:
-      - ./shared:/app/shared:ro
+    restart: on-failure
 
   interface:
-    build: ./interface
+    build:
+      context: .
+      dockerfile: interface/Dockerfile
     container_name: kingdom-interface
     env_file: .env
     ports:
@@ -56,8 +56,7 @@ services:
         condition: service_healthy
     networks:
       - scraper-net
-    volumes:
-      - ./shared:/app/shared:ro
+    restart: unless-stopped
 
 networks:
   scraper-net:
