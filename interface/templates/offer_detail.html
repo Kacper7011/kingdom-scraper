@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ offer.title }} — Kingdom Scraper{% endblock %}
 {% block content %}
+<style>
+.carousel-control-prev-icon,
+.carousel-control-next-icon { filter: invert(1); }
+</style>
 
 <a href="/" class="btn btn-outline-secondary btn-sm mb-3">&#8592; Powrót</a>
 
@@ -12,6 +16,33 @@
         </div>
 
         <h4 class="card-title">{{ offer.title }}</h4>
+
+        {% if offer.images %}
+        <div id="offerCarousel" class="carousel slide mb-4" data-bs-ride="false">
+            <div class="carousel-inner rounded" style="background: #f1f3f5;">
+                {% for img_url in offer.images %}
+                <div class="carousel-item {% if loop.first %}active{% endif %}">
+                    <img src="{{ img_url }}"
+                         class="d-block mx-auto"
+                         style="height: 460px; width: 100%; object-fit: contain;"
+                         alt="Zdjęcie {{ loop.index }}">
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if offer.images | length > 1 %}
+            <button class="carousel-control-prev" type="button" data-bs-target="#offerCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#offerCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+            <div class="text-center text-muted small mt-1">
+                <span id="carousel-counter">1</span> / {{ offer.images | length }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
 
         <table class="table table-bordered mt-3">
             <tbody>
@@ -26,6 +57,7 @@
                     {% if offer.area_m2 %}{{ offer.area_m2 }} m²{% else %}—{% endif %}
                 </td></tr>
                 <tr><th>Liczba pokoi</th><td>{{ offer.rooms or '—' }}</td></tr>
+                <tr><th>Zdjęcia</th><td>{{ offer.images | length }}</td></tr>
                 <tr><th>Pobrano</th><td>{{ offer.scraped_at }}</td></tr>
                 <tr><th>Źródło</th><td>
                     <a href="{{ offer.url }}" target="_blank" rel="noopener">{{ offer.url }}</a>
@@ -34,5 +66,13 @@
         </table>
     </div>
 </div>
+
+{% if offer.images | length > 1 %}
+<script>
+document.getElementById('offerCarousel').addEventListener('slid.bs.carousel', function (e) {
+    document.getElementById('carousel-counter').textContent = e.to + 1;
+});
+</script>
+{% endif %}
 
 {% endblock %}

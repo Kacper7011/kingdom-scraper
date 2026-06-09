@@ -53,6 +53,16 @@ def _parse_area(soup: BeautifulSoup) -> float | None:
     return None
 
 
+def _parse_images(soup: BeautifulSoup, base_url: str) -> list[str]:
+    """Return absolute URLs of all offer photo <img> tags (excludes logo/icons)."""
+    urls: list[str] = []
+    for img in soup.find_all("img", src=re.compile(r"/photos/")):
+        absolute = urljoin(base_url, img["src"])
+        if absolute not in urls:
+            urls.append(absolute)
+    return urls
+
+
 def _parse_rooms(soup: BeautifulSoup) -> int | None:
     for div in soup.find_all("div", class_="area"):
         text = div.get_text(" ", strip=True)
@@ -129,8 +139,9 @@ def parse_offer(html: str, url: str) -> Offer | None:
         price = _parse_price(soup)
         area = _parse_area(soup)
         rooms = _parse_rooms(soup)
+        images = _parse_images(soup, url)
 
-        logger.debug("Parsed offer %s: %s | %s %s", offer_id, title, category, transaction)
+        logger.debug("Parsed offer %s: %s | %s %s | %d image(s)", offer_id, title, category, transaction, len(images))
         return Offer(
             offer_id=offer_id,
             title=title,
@@ -141,6 +152,7 @@ def parse_offer(html: str, url: str) -> Offer | None:
             price=price,
             area_m2=area,
             rooms=rooms,
+            images=images,
         )
     except Exception as exc:
         logger.error("parse_offer failed for %s: %s", url, exc)
