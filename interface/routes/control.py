@@ -35,12 +35,13 @@ def control():
 @control_bp.route("/engine/start", methods=["POST"])
 def engine_start():
     r = _redis()
-    # Push seed URLs that haven't been visited yet
+    # Remove seed URLs from visited set so they are always re-scraped on start
+    if SEED_URLS:
+        r.srem(KEY_VISITED, *SEED_URLS)
     queued = 0
     for url in SEED_URLS:
-        if not r.sismember(KEY_VISITED, url):
-            r.rpush(KEY_QUEUE, url)
-            queued += 1
+        r.rpush(KEY_QUEUE, url)
+        queued += 1
     r.set(KEY_ENGINE_STATUS, STATUS_RUNNING)
     logger.info("Engine start requested — %d seed URLs queued", queued)
     return redirect(url_for("control.control"))
@@ -65,11 +66,20 @@ def engine_reset():
 
 @control_bp.route("/database/clear", methods=["POST"])
 def database_clear():
-    """Drop all documents from offers and contacts collections."""
+    """Drop all documents from MongoDB and reset Redis state for a clean re-scrape."""
     db = current_app.config["mongo_db"]
     offers_deleted = db[COLLECTION_OFFERS].delete_many({}).deleted_count
     contacts_deleted = db[COLLECTION_CONTACTS].delete_many({}).deleted_count
-    logger.info("Database cleared — offers: %d, contacts: %d", offers_deleted, contacts_deleted)
+
+    # Reset Redis so the engine can re-scrape everything from scratch
+    r = _redis()
+    r.delete(KEY_QUEUE, KEY_VISITED, KEY_STAT_SCRAPED, KEY_STAT_ERRORS)
+    r.set(KEY_ENGINE_STATUS, STATUS_STOPPED)
+
+    logger.info(
+        "Database cleared — offers: %d, contacts: %d; Redis state reset",
+        offers_deleted, contacts_deleted,
+    )
     return redirect(url_for("control.control"))
 
 
