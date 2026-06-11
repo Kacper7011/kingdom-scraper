@@ -86,13 +86,6 @@ Aplikacja podzielona jest na **4 kontenery Docker** komunikujące się przez wew
 
 ---
 
-## Szybki start
-
-### Wymagania
-
-- Docker >= 24.0
-- Docker Compose >= 2.0
-
 ### Uruchomienie
 
 ```bash
@@ -102,23 +95,11 @@ cp .env.example .env        # dostosuj wartości jeśli potrzeba
 docker compose up --build
 ```
 
-Po ~15 sekundach (czas healthchecków MongoDB i Redis) aplikacja jest gotowa:
-
 - Dashboard ofert: `http://localhost:5000`
 - Panel sterowania: `http://localhost:5000/control`
 - Status JSON: `http://localhost:5000/engine/status`
 
 Silnik uruchamia się automatycznie i zaczyna scrapować. Możesz go zatrzymać lub zrestartować przez panel sterowania.
-
-### Zatrzymanie
-
-```bash
-docker compose down          # zatrzymuje kontenery, zachowuje dane
-docker compose down -v       # zatrzymuje i usuwa wolumeny (czyści bazę)
-```
----
-
-## Struktura projektu
 
 ---
 
