@@ -120,48 +120,6 @@ docker compose down -v       # zatrzymuje i usuwa wolumeny (czyści bazę)
 
 ## Struktura projektu
 
-```
-kingdom-scraper/
-├── interface/
-│   ├── app.py                  # Flask app factory
-│   ├── routes/
-│   │   ├── dashboard.py        # GET / i /offers/<id>
-│   │   └── control.py          # start/stop/reset/status
-│   ├── templates/              # Jinja2 + Bootstrap 5
-│   ├── Dockerfile
-│   └── requirements.txt
-├── engine/
-│   ├── main.py                 # multiprocessing entry point
-│   ├── worker.py               # asyncio event loop + coroutine pool
-│   ├── crawler.py              # aiohttp fetch + link extraction
-│   ├── parser.py               # BeautifulSoup parsers
-│   ├── queue_manager.py        # Redis queue + stats
-│   ├── db_writer.py            # MongoDB upsert + reads
-│   ├── Dockerfile
-│   └── requirements.txt
-├── database/
-│   ├── init/init.js            # indeksy i kolekcje MongoDB
-│   └── Dockerfile
-├── shared/
-│   ├── models.py               # dataclasses: Offer, Address, Contact
-│   └── constants.py            # stałe i zmienne środowiskowe
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
-
----
-
-## Uzasadnienie wyboru architektury
-
-| Decyzja | Uzasadnienie |
-|---|---|
-| **Osobny kontener engine** | Silnik można skalować niezależnie od UI (dodatkowe repliki) |
-| **Redis jako kolejka** | Atomowy BLPOP zapewnia że każdy URL przetwarzany jest przez dokładnie jeden worker |
-| **multiprocessing + asyncio** | Procesy omijają GIL Pythona; coroutines dają wysoką współbieżność I/O bez wątków |
-| **MongoDB** | Schemat-free — różne typy nieruchomości mogą mieć różne pola |
-| **run_in_executor dla BLPOP** | Blokujące Redis I/O nie blokuje event loop asyncio |
-
 ---
 
 ## Licencja
